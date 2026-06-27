@@ -415,6 +415,25 @@
             background:#FDE8D0;
             color:#A93226;
         }
+        .sync-status {
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            border-radius:999px;
+            padding:5px 12px;
+            font-size:12px;
+            font-weight:700;
+            background:#F5EDE6;
+            color:#5A3F32;
+        }
+        .sync-status.online {
+            background:#D5F5E3;
+            color:#1E8449;
+        }
+        .sync-status.offline {
+            background:#FDE8D0;
+            color:#A93226;
+        }
         .menu-manager {
             display:grid;
             grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -895,7 +914,10 @@
         <div class="admin-panel">
             <div class="panel-head">
                 <span class="panel-title">📋 リアルタイム注文</span>
-                <span style="background:#E67E22;color:white;padding:0 14px;border-radius:30px;font-size:12px;font-weight:600;" id="newBadge">0 件新規</span>
+                <div class="tool-row">
+                    <span class="sync-status offline" id="syncStatus">ローカルモード</span>
+                    <span style="background:#E67E22;color:white;padding:0 14px;border-radius:30px;font-size:12px;font-weight:600;" id="newBadge">0 件新規</span>
+                </div>
             </div>
             <div class="tool-row" style="margin-bottom:12px;">
                 <select id="statusFilter">
@@ -992,6 +1014,19 @@
         // ============================================================
         const STORAGE_KEY = 'tokyo_orders';
         const MENU_KEY = 'tokyo_menu';
+        const RESTAURANT_ID = 'tokyo-seafood-main';
+
+        // Firebase Realtime Database config.
+        // Replace these values with your Firebase web app config to enable cloud sync.
+        const FIREBASE_CONFIG = {
+            apiKey: '',
+            authDomain: '',
+            databaseURL: '',
+            projectId: '',
+            storageBucket: '',
+            messagingSenderId: '',
+            appId: ''
+        };
 
         const DEFAULT_MENU = [
             // ---- 海鮮 ----
@@ -1033,15 +1068,26 @@
             { id: 'f8', name: '胡瓜味噌和え', price: 120, category: 'staple', tag: '', on: true, unit: '品' }
         ];
 
-        function getOrders() {
+        const CLOUD_CONFIGURED = Boolean(
+            FIREBASE_CONFIG.apiKey &&
+            FIREBASE_CONFIG.databaseURL &&
+            FIREBASE_CONFIG.projectId &&
+            FIREBASE_CONFIG.appId
+        );
+
+        let firebaseApi = null;
+        let db = null;
+        let ordersRef = null;
+        let menuRef = null;
+        let cloudReady = false;
+        let ordersCache = loadLocalOrders();
+        let menuCache = loadLocalMenu();
+
+        function loadLocalOrders() {
             try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
         }
 
-        function saveOrders(orders) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-        }
-
-        function getMenu() {
+        function loadLocalMenu() {
             try {
                 const data = JSON.parse(localStorage.getItem(MENU_KEY));
                 if (data && data.length) return data;
@@ -1049,12 +1095,105 @@
             return DEFAULT_MENU;
         }
 
-        function saveMenu(menu) {
-            localStorage.setItem(MENU_KEY, JSON.stringify(menu));
+        function cacheOrders(orders) {
+            ordersCache = orders;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        }
+
+        function cacheMenu(menu) {
+            menuCache = menu && menu.length ? menu : DEFAULT_MENU;
+            localStorage.setItem(MENU_KEY, JSON.stringify(menuCache));
+        }
+
+        function getOrders() {
+            return ordersCache;
+        }
+
+        function getMenu() {
+            return menuCache;
+        }
+
+        async function saveOrders(orders) {
+            cacheOrders(orders);
+            if (cloudReady && firebaseApi && ordersRef) {
+                const orderMap = {};
+                orders.forEach(order => { orderMap[order.id] = order; });
+                await firebaseApi.set(ordersRef, orderMap);
+            }
+        }
+
+        async function createOrder(order) {
+            cacheOrders([...ordersCache.filter(o => o.id !== order.id), order]);
+            if (cloudReady && firebaseApi && db) {
+                await firebaseApi.set(firebaseApi.ref(db, `${cloudBasePath()}/orders/${order.id}`), order);
+            }
+        }
+
+        async function saveMenu(menu) {
+            cacheMenu(menu);
+            if (cloudReady && firebaseApi && menuRef) {
+                await firebaseApi.set(menuRef, menuCache);
+            }
+        }
+
+        function cloudBasePath() {
+            return `restaurants/${RESTAURANT_ID}`;
+        }
+
+        function updateSyncStatus(status, message) {
+            const el = document.getElementById('syncStatus');
+            if (!el) return;
+            el.classList.remove('online', 'offline');
+            if (status) el.classList.add(status);
+            el.textContent = message;
+        }
+
+        async function initCloudSync() {
+            if (!CLOUD_CONFIGURED) {
+                updateSyncStatus('offline', 'ローカルモード');
+                return;
+            }
+
+            updateSyncStatus('', 'クラウド接続中');
+            try {
+                const appModule = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
+                const dbModule = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js');
+                const app = appModule.initializeApp(FIREBASE_CONFIG);
+                db = dbModule.getDatabase(app);
+                firebaseApi = dbModule;
+                ordersRef = dbModule.ref(db, `${cloudBasePath()}/orders`);
+                menuRef = dbModule.ref(db, `${cloudBasePath()}/menu`);
+
+                dbModule.onValue(ordersRef, snapshot => {
+                    const data = snapshot.val() || {};
+                    const orders = Array.isArray(data) ? data : Object.values(data);
+                    cacheOrders(orders.filter(Boolean));
+                    if (currentMode === 'admin') renderAdmin();
+                });
+
+                dbModule.onValue(menuRef, async snapshot => {
+                    const data = snapshot.val();
+                    if (data && data.length) {
+                        cacheMenu(data);
+                    } else {
+                        await dbModule.set(menuRef, DEFAULT_MENU);
+                        cacheMenu(DEFAULT_MENU);
+                    }
+                    renderFrontMenu(currentCategory);
+                    if (currentMode === 'admin') renderMenuManager();
+                });
+
+                cloudReady = true;
+                updateSyncStatus('online', 'クラウド同期中');
+            } catch (error) {
+                console.warn('Firebase sync failed. Falling back to local mode.', error);
+                cloudReady = false;
+                updateSyncStatus('offline', 'ローカルモード');
+            }
         }
 
         if (!localStorage.getItem(MENU_KEY)) {
-            saveMenu(DEFAULT_MENU);
+            cacheMenu(DEFAULT_MENU);
         }
 
         // ============================================================
@@ -1281,7 +1420,7 @@
             updatePayDetail(method);
         });
 
-        function confirmPayment() {
+        async function confirmPayment() {
             const items = getCartItems();
             if (!items.length) return;
 
@@ -1295,7 +1434,6 @@
                 }
             }
 
-            const orders = getOrders();
             const tableName = document.getElementById('tableInput').value.trim() || '未指定';
             const peopleCount = Math.max(1, parseInt(document.getElementById('peopleInput').value, 10) || 1);
             const note = document.getElementById('noteInput').value.trim();
@@ -1310,16 +1448,27 @@
                 status: 'new',
                 timestamp: Date.now()
             };
-            orders.push(newOrder);
-            saveOrders(orders);
+            const payBtn = document.getElementById('modalPay');
+            payBtn.disabled = true;
+            payBtn.textContent = '送信中...';
+
+            try {
+                await createOrder(newOrder);
+            } catch (error) {
+                console.error(error);
+                alert('注文の送信に失敗しました。通信状態をご確認ください。');
+                payBtn.disabled = false;
+                payBtn.textContent = '決済する';
+                return;
+            }
 
             cart = {};
             updateCartUI();
             renderFrontMenu(currentCategory);
 
             document.getElementById('paySuccess').style.display = 'block';
-            document.getElementById('modalPay').disabled = true;
-            document.getElementById('modalPay').textContent = '✅ 決済完了';
+            payBtn.disabled = true;
+            payBtn.textContent = '✅ 決済完了';
             document.getElementById('noteInput').value = '';
 
             renderAdmin();
@@ -1328,8 +1477,8 @@
             setTimeout(() => {
                 closePaymentModal();
                 document.getElementById('paySuccess').style.display = 'none';
-                document.getElementById('modalPay').disabled = false;
-                document.getElementById('modalPay').textContent = '決済する';
+                payBtn.disabled = false;
+                payBtn.textContent = '決済する';
             }, 1500);
         }
 
@@ -1468,7 +1617,7 @@
         // ============================================================
         // 8. 管理 - ステータス更新
         // ============================================================
-        function updateOrderStatus(orderId, action) {
+        async function updateOrderStatus(orderId, action) {
             let orders = getOrders();
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
@@ -1481,7 +1630,17 @@
             };
             order.status = statusMap[action] || order.status;
 
-            saveOrders(orders);
+            try {
+                if (cloudReady && firebaseApi && db) {
+                    await firebaseApi.update(firebaseApi.ref(db, `${cloudBasePath()}/orders/${orderId}`), { status: order.status });
+                    cacheOrders(orders);
+                } else {
+                    await saveOrders(orders);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('注文状態の更新に失敗しました。');
+            }
             renderAdmin();
         }
 
@@ -1526,11 +1685,11 @@
             `).join('');
 
             manager.querySelectorAll('[data-menu-id]').forEach(input => {
-                input.addEventListener('change', function() {
+                input.addEventListener('change', async function() {
                     const nextMenu = getMenu().map(item => (
                         item.id === this.dataset.menuId ? { ...item, on: this.checked } : item
                     ));
-                    saveMenu(nextMenu);
+                    await saveMenu(nextMenu);
                     renderFrontMenu(currentCategory);
                     renderMenuManager();
                 });
@@ -1567,9 +1726,14 @@
             URL.revokeObjectURL(url);
         }
 
-        function clearOrders() {
+        async function clearOrders() {
             if (!confirm('すべての注文履歴を削除しますか？')) return;
-            saveOrders([]);
+            if (cloudReady && firebaseApi && ordersRef) {
+                await firebaseApi.remove(ordersRef);
+                cacheOrders([]);
+            } else {
+                await saveOrders([]);
+            }
             renderAdmin();
         }
 
@@ -1646,7 +1810,7 @@
         // ============================================================
         // 12. 自動テスト注文
         // ============================================================
-        window.simulateOrder = function() {
+        window.simulateOrder = async function() {
             const menu = getMenu().filter(m => m.on);
             if (!menu.length) return;
 
@@ -1665,8 +1829,7 @@
             const payments = ['paypay', 'wechat', 'alipay', 'iccard', 'visa', 'cash'];
             const payment = payments[Math.floor(Math.random() * payments.length)];
 
-            const orders = getOrders();
-            orders.push({
+            await createOrder({
                 id: 'ORD' + String(Date.now()).slice(-8),
                 items: items,
                 total: total,
@@ -1677,7 +1840,6 @@
                 status: 'new',
                 timestamp: Date.now()
             });
-            saveOrders(orders);
             if (currentMode === 'admin') renderAdmin();
             playNotificationSound();
         };
@@ -1686,13 +1848,15 @@
         // 13. 初期化
         // ============================================================
         if (!localStorage.getItem(MENU_KEY)) {
-            saveMenu(DEFAULT_MENU);
+            cacheMenu(DEFAULT_MENU);
         }
         switchMode('front');
+        initCloudSync();
 
         console.log('🏮 東京海鮮焼きシステムが起動しました！');
         console.log('💡 右上の「切替」でお客様/店長モードを切り替えられます');
         console.log('💡 コンソールで simulateOrder() を実行するとテスト注文が入ります');
+        console.log('🌐 Firebase configured:', CLOUD_CONFIGURED);
         console.log('📋 現在のメニュー数:', getMenu().length);
     </script>
 </body>
