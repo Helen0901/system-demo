@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>東京海鮮焼き · オーダーシステム</title>
+    <meta name="description" content="東京海鮮焼きのスマホ点餐システム。卓番を入力してそのまま注文できます。">
+    <meta property="og:title" content="東京海鮮焼き · スマホ点餐">
+    <meta property="og:description" content="海鮮焼き、串焼き、主食をスマホから注文できます。">
+    <meta property="og:image" content="https://helen0901.github.io/system-demo/share-card.png">
+    <meta property="og:url" content="https://helen0901.github.io/system-demo/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <style>
         * {
             margin: 0;
@@ -154,11 +161,12 @@
         }
         .menu-item {
             background: white;
-            border-radius: 16px;
-            padding: 14px 16px;
+            border-radius: 14px;
+            padding: 10px 12px;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
+            gap: 12px;
             border: 1px solid #F0E0D4;
             transition: 0.15s;
             box-shadow: 0 2px 8px rgba(139, 26, 26, 0.06);
@@ -170,6 +178,16 @@
         .menu-item .info {
             flex: 1;
             margin-right: 10px;
+            min-width: 0;
+        }
+        .menu-item .thumb {
+            width: 70px;
+            height: 70px;
+            border-radius: 10px;
+            flex: 0 0 auto;
+            object-fit: cover;
+            background: #F5EDE6;
+            border: 1px solid #F0E0D4;
         }
         .menu-item .info .name {
             font-weight: 600;
@@ -419,6 +437,41 @@
             background:#FDE8D0;
             color:#A93226;
         }
+        .staff-line {
+            color:#8B6B5A;
+            font-size:12px;
+            margin-bottom:10px;
+        }
+        .qr-grid {
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+            gap:10px;
+        }
+        .qr-card {
+            background:#FFF8F0;
+            border:1px solid #F0E0D4;
+            border-radius:12px;
+            padding:10px;
+            text-align:center;
+        }
+        .qr-card img {
+            width:110px;
+            height:110px;
+            display:block;
+            margin:0 auto 6px;
+            background:white;
+            border-radius:8px;
+        }
+        .qr-card .qr-title {
+            font-weight:700;
+            color:#2C1810;
+            font-size:13px;
+        }
+        .qr-card .qr-link {
+            color:#8B6B5A;
+            font-size:11px;
+            word-break:break-all;
+        }
         .sync-status {
             display:inline-flex;
             align-items:center;
@@ -609,6 +662,10 @@
         .btn-cancel {
             background: #E74C3C;
             color: white;
+        }
+        .btn-print {
+            background:#F5EDE6;
+            color:#5A3F32;
         }
 
         .modal-overlay {
@@ -936,9 +993,24 @@
                 <button class="tool-btn" id="exportBtn">CSV出力</button>
                 <button class="tool-btn warn" id="clearOrdersBtn">注文クリア</button>
             </div>
+            <div class="staff-line" id="staffLine">担当スタッフ: 未設定</div>
             <div class="order-list" id="orderList">
                 <div class="empty-msg">注文がありません</div>
             </div>
+        </div>
+
+        <div class="admin-panel">
+            <div class="panel-head">
+                <span class="panel-title">🔳 卓番QRコード</span>
+                <span style="font-size:12px;color:#8B6B5A;">印刷してテーブルに置けます</span>
+            </div>
+            <div class="tool-row" style="margin-bottom:12px;">
+                <input id="qrPrefix" type="text" value="T" maxlength="8" placeholder="卓番Prefix">
+                <input id="qrCount" type="number" min="1" max="60" value="12" placeholder="卓数">
+                <button class="tool-btn primary" id="qrGenerateBtn">生成</button>
+                <button class="tool-btn" id="qrPrintBtn">QR印刷</button>
+            </div>
+            <div class="qr-grid" id="qrGrid"></div>
         </div>
 
         <div class="admin-panel">
@@ -1213,6 +1285,7 @@
         let orderSearch = '';
         const ADMIN_PIN = '0901';
         let adminUnlocked = sessionStorage.getItem('adminUnlocked') === 'yes';
+        let staffName = sessionStorage.getItem('staffName') || '';
 
         function escapeHTML(value) {
             return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -1236,12 +1309,48 @@
             if (input === ADMIN_PIN) {
                 adminUnlocked = true;
                 sessionStorage.setItem('adminUnlocked', 'yes');
+                if (!staffName) {
+                    staffName = prompt('担当スタッフ名を入力してください') || 'Staff';
+                    sessionStorage.setItem('staffName', staffName);
+                }
                 applyAccessMode();
                 switchMode('admin');
                 return true;
             }
             alert('パスワードが違います');
             return false;
+        }
+
+        function updateStaffLine() {
+            const line = document.getElementById('staffLine');
+            if (line) line.textContent = `担当スタッフ: ${staffName || '未設定'}`;
+        }
+
+        function menuImageData(item) {
+            const emojiMap = { seafood: '🦞', bbq: '🍢', meat: '🥩', staple: '🥟' };
+            const colorMap = {
+                seafood: ['#0E7490', '#F97316'],
+                bbq: ['#7C2D12', '#F59E0B'],
+                meat: ['#991B1B', '#FCA5A5'],
+                staple: ['#166534', '#FDE68A']
+            };
+            const [a, b] = colorMap[item.category] || ['#8B1A1A', '#E67E22'];
+            const emoji = emojiMap[item.category] || '🍽️';
+            const label = String(item.name || '').slice(0, 5);
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+                    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>
+                    <rect width="160" height="160" rx="22" fill="url(#g)"/>
+                    <circle cx="126" cy="28" r="28" fill="rgba(255,255,255,0.22)"/>
+                    <text x="80" y="78" font-size="48" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+                    <text x="80" y="124" font-size="20" font-family="system-ui, sans-serif" fill="white" font-weight="700" text-anchor="middle">${escapeHTML(label)}</text>
+                </svg>`;
+            return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+        }
+
+        function customerUrlForTable(tableNo) {
+            const base = `${window.location.origin}${window.location.pathname}`;
+            return `${base}?table=${encodeURIComponent(tableNo)}`;
         }
 
         // ============================================================
@@ -1266,6 +1375,7 @@
                 const qty = cart[item.id]?.quantity || 0;
                 html += `
                     <div class="menu-item" data-id="${item.id}">
+                        <img class="thumb" src="${menuImageData(item)}" alt="${escapeHTML(item.name)}">
                         <div class="info">
                             <div class="name">${escapeHTML(item.name)} ${item.tag ? `<span class="tag">${escapeHTML(item.tag)}</span>` : ''}</div>
                             <div class="desc">
@@ -1379,6 +1489,10 @@
             });
             document.getElementById('modalSummary').innerHTML = html;
             document.getElementById('modalTotal').textContent = getCartTotal();
+            const tableFromUrl = new URLSearchParams(window.location.search).get('table');
+            if (tableFromUrl && !document.getElementById('tableInput').value.trim()) {
+                document.getElementById('tableInput').value = tableFromUrl;
+            }
 
             selectedPayment = 'paypay';
             cashAmount = 0;
@@ -1615,6 +1729,7 @@
                             <span class="payment">${payIcons[order.payment] || '💳'} ${order.payment || '不明'}</span>
                             <span class="total">¥${order.total.toFixed(0)}</span>
                             <div class="actions">
+                                <button class="btn-print" data-id="${order.id}" data-action="print">🖨 印刷</button>
                                 ${order.status === 'new' ? `<button class="btn-cooking" data-id="${order.id}" data-action="cooking">👨‍🍳 調理</button>` : ''}
                                 ${order.status === 'cooking' ? `<button class="btn-done" data-id="${order.id}" data-action="done">✅ 完了</button>` : ''}
                                 ${order.status === 'done' ? `<button class="btn-paid" data-id="${order.id}" data-action="paid">💰 決済</button>` : ''}
@@ -1633,6 +1748,10 @@
                 btn.addEventListener('click', function() {
                     const id = this.dataset.id;
                     const action = this.dataset.action;
+                    if (action === 'print') {
+                        printOrder(id);
+                        return;
+                    }
                     updateOrderStatus(id, action);
                 });
             });
@@ -1753,6 +1872,85 @@
             URL.revokeObjectURL(url);
         }
 
+        function renderTableQRCodes() {
+            const grid = document.getElementById('qrGrid');
+            if (!grid) return;
+            const prefix = (document.getElementById('qrPrefix').value.trim() || 'T').toUpperCase();
+            const count = Math.max(1, Math.min(60, parseInt(document.getElementById('qrCount').value, 10) || 1));
+            const cards = [];
+            for (let i = 1; i <= count; i++) {
+                const tableNo = `${prefix}-${i}`;
+                const url = customerUrlForTable(tableNo);
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
+                cards.push(`
+                    <div class="qr-card">
+                        <img src="${qrUrl}" alt="${escapeHTML(tableNo)} QR">
+                        <div class="qr-title">${escapeHTML(tableNo)}</div>
+                        <div class="qr-link">${escapeHTML(url)}</div>
+                    </div>
+                `);
+            }
+            grid.innerHTML = cards.join('');
+        }
+
+        function printTableQRCodes() {
+            const content = document.getElementById('qrGrid').innerHTML;
+            const win = window.open('', '_blank', 'width=900,height=700');
+            if (!win) {
+                alert('ポップアップを許可してから再度お試しください');
+                return;
+            }
+            win.document.write(`
+                <html><head><title>卓番QRコード</title>
+                <style>
+                    body{font-family:system-ui,sans-serif;padding:24px;color:#2C1810}
+                    .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+                    .qr-card{border:1px solid #ddd;border-radius:10px;padding:12px;text-align:center;break-inside:avoid}
+                    img{width:140px;height:140px}.qr-title{font-weight:700;margin-top:6px}.qr-link{font-size:10px;word-break:break-all;color:#666}
+                </style></head><body><h2>東京海鮮焼き 卓番QRコード</h2><div class="qr-grid">${content}</div></body></html>
+            `);
+            win.document.close();
+            win.focus();
+            setTimeout(() => win.print(), 300);
+        }
+
+        function printOrder(orderId) {
+            const order = getOrders().find(o => o.id === orderId);
+            if (!order) return;
+            const items = order.items.map(item => `
+                <tr><td>${escapeHTML(item.name)} ×${item.quantity}</td><td>¥${(item.price * item.quantity).toFixed(0)}</td></tr>
+            `).join('');
+            const win = window.open('', '_blank', 'width=420,height=640');
+            if (!win) {
+                alert('ポップアップを許可してから再度お試しください');
+                return;
+            }
+            win.document.write(`
+                <html><head><title>${escapeHTML(order.id)}</title>
+                <style>
+                    body{font-family:system-ui,sans-serif;padding:18px;color:#111;max-width:320px}
+                    h2{font-size:18px;margin:0 0 8px;text-align:center}
+                    .meta{font-size:12px;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:8px 0;margin:8px 0}
+                    table{width:100%;border-collapse:collapse;font-size:13px}td{padding:5px 0;border-bottom:1px dashed #ddd}td:last-child{text-align:right}
+                    .total{font-size:18px;font-weight:700;text-align:right;margin-top:10px}.note{font-size:12px;margin-top:8px}
+                </style></head><body>
+                    <h2>東京海鮮焼き</h2>
+                    <div class="meta">
+                        注文: ${escapeHTML(order.id)}<br>
+                        卓番: ${escapeHTML(order.table || '未指定')} / 人数: ${escapeHTML(order.people || 1)}名<br>
+                        時間: ${new Date(order.timestamp).toLocaleString('ja-JP')}<br>
+                        担当: ${escapeHTML(staffName || '未設定')}
+                    </div>
+                    <table>${items}</table>
+                    <div class="total">合計 ¥${order.total.toFixed(0)}</div>
+                    ${order.note ? `<div class="note">備考: ${escapeHTML(order.note)}</div>` : ''}
+                </body></html>
+            `);
+            win.document.close();
+            win.focus();
+            setTimeout(() => win.print(), 300);
+        }
+
         async function clearOrders() {
             if (!confirm('すべての注文履歴を削除しますか？')) return;
             if (cloudReady && firebaseApi && ordersRef) {
@@ -1784,8 +1982,10 @@
             document.getElementById('roleLabel').textContent = mode === 'front' ? 'お客様' : '店長';
 
             if (mode === 'admin') {
+                updateStaffLine();
                 renderAdmin();
                 renderMenuManager();
+                renderTableQRCodes();
             }
             if (mode === 'front') {
                 renderFrontMenu(currentCategory);
@@ -1830,6 +2030,8 @@
 
         document.getElementById('exportBtn').addEventListener('click', exportOrdersCSV);
         document.getElementById('clearOrdersBtn').addEventListener('click', clearOrders);
+        document.getElementById('qrGenerateBtn').addEventListener('click', renderTableQRCodes);
+        document.getElementById('qrPrintBtn').addEventListener('click', printTableQRCodes);
 
         // ============================================================
         // 11. タブ間同期
