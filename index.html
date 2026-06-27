@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>東京海鮮焼き · オーダーシステム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+        }
+
+        body {
+            background: #FFF8F0;
+            color: #2C1810;
+            padding-bottom: 80px;
+            min-height: 100vh;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #8B1A1A 0%, #C0392B 50%, #D35400 100%);
+            padding: 16px 20px 12px;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(192, 57, 43, 0.35);
+        }
+        .app-header .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .app-header .brand h1 {
+            font-size: 20px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .app-header .brand small {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        .app-header .role-badge {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .app-header .role-badge .switch-link {
+            color: #FDB813;
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .mode-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 2px solid #F5E6D3;
+            position: sticky;
+            top: 72px;
+            z-index: 20;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .mode-tabs button {
+            flex: 1;
+            padding: 12px 0;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            font-weight: 600;
+            color: #8B6B5A;
+            cursor: pointer;
+            transition: 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-bottom: 3px solid transparent;
+        }
+        .mode-tabs button.active {
+            color: #C0392B;
+            border-bottom-color: #E67E22;
+        }
+        .mode-tabs button:active {
+            transform: scale(0.96);
+        }
+
+        .page {
+            display: none;
+            padding: 12px 16px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .page.active {
+            display: block;
+        }
+
+        .category-nav {
+            display: flex;
+            gap: 8px;
+            padding: 8px 0 12px;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none;
+        }
+        .category-nav::-webkit-scrollbar {
+            display: none;
+        }
+        .category-nav button {
+            background: #F5EDE6;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #5A3F32;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: 0.15s;
+        }
+        .category-nav button.active {
+            background: #E67E22;
+            color: white;
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.35);
+        }
+        .category-nav button:active {
+            transform: scale(0.94);
+        }
+
+        .menu-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-bottom: 80px;
+        }
+        .menu-item {
+            background: white;
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #F0E0D4;
+            transition: 0.15s;
+            box-shadow: 0 2px 8px rgba(139, 26, 26, 0.06);
+        }
+        .menu-item:active {
+            background: #FFF5EE;
+            transform: scale(0.99);
+        }
+        .menu-item .info {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .menu-item .info .name {
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            color: #2C1810;
+        }
+        .menu-item .info .name .tag {
+            background: #FDE8D0;
+            font-size: 10px;
+            padding: 0 10px;
+            border-radius: 30px;
+            color: #C0392B;
+            font-weight: 600;
+        }
+        .menu-item .info .desc {
+            font-size: 13px;
+            color: #8B6B5A;
+            display: flex;
+            gap: 10px;
+            margin-top: 2px;
+        }
+        .menu-item .info .desc .price {
+            font-weight: 700;
+            color: #D35400;
+            font-size: 16px;
+        }
+        .menu-item .actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .menu-item .actions .qty {
+            font-weight: 700;
+            min-width: 20px;
+            text-align: center;
+            font-size: 16px;
+            color: #2C1810;
+        }
+        .menu-item .actions button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            font-size: 18px;
+            font-weight: 300;
+            background: #F5EDE6;
+            cursor: pointer;
+            transition: 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2C1810;
+        }
+        .menu-item .actions button.add-btn {
+            background: #C0392B;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+        }
+        .menu-item .actions button.add-btn:active {
+            transform: scale(0.9);
+            background: #A93226;
+        }
+        .menu-item .actions button.minus-btn:active {
+            transform: scale(0.9);
+            background: #E8D5C4;
+        }
+        .menu-item .off-label {
+            color: #B8957A;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .cart-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 248, 240, 0.96);
+            border-top: 2px solid #E8D5C4;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(8px);
+            z-index: 25;
+            box-shadow: 0 -8px 30px rgba(139, 26, 26, 0.1);
+        }
+        .cart-bar .left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .cart-bar .left .icon {
+            background: linear-gradient(135deg, #C0392B, #D35400);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            position: relative;
+            box-shadow: 0 2px 12px rgba(192, 57, 43, 0.3);
+        }
+        .cart-bar .left .icon .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #F39C12;
+            color: #2C1810;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            box-shadow: 0 2px 6px rgba(243, 156, 18, 0.4);
+        }
+        .cart-bar .left .total {
+            font-weight: 700;
+            font-size: 17px;
+            color: #2C1810;
+        }
+        .cart-bar .left .total span {
+            color: #D35400;
+        }
+        .cart-bar .checkout-btn {
+            background: linear-gradient(135deg, #F39C12, #E67E22);
+            border: none;
+            padding: 8px 22px;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 15px;
+            color: #2C1810;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 4px 16px rgba(243, 156, 18, 0.4);
+        }
+        .cart-bar .checkout-btn:disabled {
+            opacity: 0.4;
+            box-shadow: none;
+            pointer-events: none;
+        }
+        .cart-bar .checkout-btn:active {
+            transform: scale(0.94);
+        }
+
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .admin-stats .stat-card {
+            background: white;
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid #F0E0D4;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .admin-stats .stat-card .num {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2C1810;
+        }
+        .admin-stats .stat-card .num.gold {
+            color: #E67E22;
+        }
+        .admin-stats .stat-card .num.green {
+            color: #27AE60;
+        }
+        .admin-stats .stat-card .label {
+            font-size: 12px;
+            color: #8B6B5A;
+        }
+
+        .admin-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid #F0E0D4;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            margin-bottom: 14px;
+        }
+        .panel-head {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:12px;
+            flex-wrap:wrap;
+            gap:8px;
+        }
+        .panel-title {
+            font-weight:700;
+            font-size:16px;
+            color:#2C1810;
+        }
+        .tool-row {
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+            align-items:center;
+        }
+        .tool-row select,
+        .tool-row input,
+        .checkout-fields input,
+        .checkout-fields textarea {
+            border:1px solid #F0E0D4;
+            background:#FFFDFC;
+            color:#2C1810;
+            border-radius:12px;
+            padding:9px 10px;
+            font-size:13px;
+            outline:none;
+        }
+        .tool-row select:focus,
+        .tool-row input:focus,
+        .checkout-fields input:focus,
+        .checkout-fields textarea:focus {
+            border-color:#D35400;
+            box-shadow:0 0 0 3px rgba(211,84,0,0.12);
+        }
+        .tool-btn {
+            border:none;
+            background:#F5EDE6;
+            color:#5A3F32;
+            border-radius:12px;
+            padding:9px 12px;
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+        }
+        .tool-btn.primary {
+            background:#2C1810;
+            color:white;
+        }
+        .tool-btn.warn {
+            background:#FDE8D0;
+            color:#A93226;
+        }
+        .menu-manager {
+            display:grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap:8px;
+            max-height:220px;
+            overflow:auto;
+            padding-right:2px;
+        }
+        .menu-toggle {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:8px;
+            background:#FFF8F0;
+            border:1px solid #F0E0D4;
+            border-radius:12px;
+            padding:10px 12px;
+            font-size:13px;
+        }
+        .menu-toggle span {
+            color:#5A3F32;
+            min-width:0;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+        .menu-toggle input {
+            width:18px;
+            height:18px;
+            accent-color:#C0392B;
+            flex:0 0 auto;
+        }
+
+        .order-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .order-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .order-list::-webkit-scrollbar-thumb {
+            background: #E8D5C4;
+            border-radius: 10px;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid #F0E0D4;
+            border-left: 4px solid #E8D5C4;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .order-card.new-order {
+            border-left-color: #E67E22;
+            background: #FFFCF5;
+        }
+        .order-card .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+        }
+        .order-card .row .id {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2C1810;
+        }
+        .order-card .row .time {
+            font-size: 12px;
+            color: #8B6B5A;
+        }
+        .order-card .row .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 12px;
+            border-radius: 30px;
+            background: #F5EDE6;
+        }
+        .order-card .row .status-badge.new {
+            background: #FDE8D0;
+            color: #D35400;
+        }
+        .order-card .row .status-badge.cooking {
+            background: #D6EAF8;
+            color: #2471A3;
+        }
+        .order-card .row .status-badge.done {
+            background: #D5F5E3;
+            color: #1E8449;
+        }
+        .order-card .row .status-badge.paid {
+            background: #2C1810;
+            color: white;
+        }
+        .order-card .items-line {
+            font-size: 13px;
+            color: #5A3F32;
+            margin: 4px 0;
+        }
+        .order-card .meta-line {
+            font-size: 12px;
+            color: #8B6B5A;
+            margin-top: 6px;
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+        .order-card .items-line .item-tag {
+            background: #F5EDE6;
+            padding: 0 8px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 2px 2px 0 0;
+            font-size: 12px;
+        }
+        .order-card .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #F0E0D4;
+        }
+        .order-card .footer .payment {
+            font-size: 13px;
+            color: #8B6B5A;
+        }
+        .order-card .footer .total {
+            font-weight: 700;
+            font-size: 17px;
+            color: #D35400;
+        }
+        .order-card .footer .actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .order-card .footer .actions button {
+            padding: 3px 14px;
+            border-radius: 30px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .order-card .footer .actions button:active {
+            transform: scale(0.94);
+        }
+        .btn-cooking {
+            background: #5DADE2;
+            color: white;
+        }
+        .btn-done {
+            background: #27AE60;
+            color: white;
+        }
+        .btn-paid {
+            background: #2C1810;
+            color: white;
+        }
+        .btn-cancel {
+            background: #E74C3C;
+            color: white;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(44, 24, 16, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+            padding: 20px;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal {
+            background: white;
+            max-width: 460px;
+            width: 100%;
+            border-radius: 28px;
+            padding: 24px 20px 28px;
+            box-shadow: 0 30px 60px rgba(44, 24, 16, 0.3);
+            transform: translateY(20px);
+            transition: 0.25s;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 4px;
+            color: #2C1810;
+        }
+        .modal .sub {
+            font-size: 14px;
+            color: #8B6B5A;
+            margin-bottom: 12px;
+        }
+        .modal .order-summary {
+            background: #FFF8F0;
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .modal .order-summary .line {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 14px;
+            border-bottom: 1px dashed #F0E0D4;
+        }
+        .modal .order-summary .line:last-child {
+            border-bottom: none;
+        }
+        .modal .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 20px;
+            margin: 8px 0 14px;
+            color: #2C1810;
+        }
+        .modal .total-row .amount {
+            color: #D35400;
+        }
+
+        .modal .pay-methods {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0 12px;
+        }
+        .modal .pay-methods button {
+            padding: 10px 0;
+            border-radius: 60px;
+            border: 2px solid #F0E0D4;
+            background: white;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: 0.15s;
+            color: #5A3F32;
+            flex-direction: column;
+            line-height: 1.3;
+        }
+        .modal .pay-methods button .icon {
+            font-size: 22px;
+        }
+        .modal .pay-methods button .label {
+            font-size: 11px;
+        }
+        .modal .pay-methods button.selected {
+            border-color: #D35400;
+            background: #FFF5EE;
+            box-shadow: 0 0 0 3px rgba(211, 84, 0, 0.15);
+        }
+        .modal .pay-methods button:active {
+            transform: scale(0.95);
+        }
+
+        .modal .pay-detail {
+            background: #FFF8F0;
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .modal .pay-detail .icon {
+            font-size: 28px;
+        }
+        .modal .pay-detail .info .label {
+            font-weight: 600;
+            color: #2C1810;
+        }
+        .modal .pay-detail .info .desc {
+            color: #8B6B5A;
+            font-size: 13px;
+        }
+        .modal .pay-detail .cash-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .modal .pay-detail .cash-input input {
+            padding: 6px 12px;
+            border-radius: 30px;
+            border: 1px solid #F0E0D4;
+            width: 100px;
+            font-size: 14px;
+            outline: none;
+            background: white;
+        }
+        .modal .pay-detail .cash-input input:focus {
+            border-color: #D35400;
+        }
+        .modal .pay-detail .cash-input .change {
+            font-weight: 700;
+            color: #27AE60;
+        }
+
+        .checkout-fields {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin:10px 0 12px;
+        }
+        .checkout-fields textarea {
+            grid-column:1 / -1;
+            min-height:62px;
+            resize:vertical;
+        }
+
+        .modal .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .modal .actions button {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 60px;
+            border: none;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .modal .actions button:active {
+            transform: scale(0.94);
+        }
+        .modal .actions .btn-cancel {
+            background: #F5EDE6;
+            color: #5A3F32;
+        }
+        .modal .actions .btn-pay {
+            background: linear-gradient(135deg, #C0392B, #D35400);
+            color: white;
+            box-shadow: 0 4px 16px rgba(192, 57, 43, 0.3);
+        }
+        .modal .actions .btn-pay:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .modal .success-msg {
+            text-align: center;
+            padding: 8px 0 4px;
+            color: #27AE60;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #B8957A;
+            padding: 30px 0;
+            font-size: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .app-header .brand h1 {
+                font-size: 17px;
+            }
+            .app-header .role-badge {
+                font-size: 12px;
+                padding: 3px 12px;
+            }
+            .mode-tabs button {
+                font-size: 13px;
+                padding: 10px 0;
+            }
+            .menu-item .info .name {
+                font-size: 14px;
+            }
+            .admin-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .modal .pay-methods {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+            .checkout-fields {
+                grid-template-columns:1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="brand">
+            <span style="font-size:24px;">🏮</span>
+            <h1>東京海鮮焼き <small>· オーダーシステム</small></h1>
+        </div>
+        <div class="role-badge" id="roleBadge">
+            👤 現在：<span id="roleLabel">お客様</span>
+            <span class="switch-link" id="switchRoleBtn">[切替]</span>
+        </div>
+    </header>
+
+    <div class="mode-tabs" id="modeTabs">
+        <button class="active" data-mode="front">🍽️ 注文</button>
+        <button data-mode="admin">🧑‍🍳 管理</button>
+    </div>
+
+    <!-- ===== 前台ページ ===== -->
+    <div class="page active" id="frontPage">
+        <div class="category-nav" id="categoryNav">
+            <button class="active" data-cat="all">🔥 すべて</button>
+            <button data-cat="seafood">🦞 海鮮</button>
+            <button data-cat="bbq">🍢 串焼き</button>
+            <button data-cat="meat">🥩 肉類</button>
+            <button data-cat="staple">🥟 主食</button>
+        </div>
+        <div class="menu-grid" id="menuGrid"></div>
+        <div class="cart-bar" id="cartBar">
+            <div class="left">
+                <div class="icon">
+                    🧾
+                    <span class="badge" id="cartBadge">0</span>
+                </div>
+                <div class="total">¥ <span id="cartTotal">0</span></div>
+            </div>
+            <button class="checkout-btn" id="checkoutBtn">注文する ➜</button>
+        </div>
+    </div>
+
+    <!-- ===== 管理ページ ===== -->
+    <div class="page" id="adminPage">
+        <div class="admin-stats" id="adminStats">
+            <div class="stat-card">
+                <div class="num" id="statOrders">0</div>
+                <div class="label">📋 総注文</div>
+            </div>
+            <div class="stat-card">
+                <div class="num gold" id="statRevenue">¥0</div>
+                <div class="label">💰 本日売上</div>
+            </div>
+            <div class="stat-card">
+                <div class="num gold" id="statPending">0</div>
+                <div class="label">⏳ 未処理</div>
+            </div>
+            <div class="stat-card">
+                <div class="num green" id="statTopDish">-</div>
+                <div class="label">🔥 人気No.1</div>
+            </div>
+        </div>
+
+        <div class="admin-panel">
+            <div class="panel-head">
+                <span class="panel-title">📋 リアルタイム注文</span>
+                <span style="background:#E67E22;color:white;padding:0 14px;border-radius:30px;font-size:12px;font-weight:600;" id="newBadge">0 件新規</span>
+            </div>
+            <div class="tool-row" style="margin-bottom:12px;">
+                <select id="statusFilter">
+                    <option value="all">すべての状態</option>
+                    <option value="new">新規</option>
+                    <option value="cooking">調理中</option>
+                    <option value="done">完了</option>
+                    <option value="paid">決済済</option>
+                </select>
+                <input id="orderSearch" type="search" placeholder="注文番号・卓番・商品名">
+                <button class="tool-btn primary" id="simulateBtn">テスト注文</button>
+                <button class="tool-btn" id="exportBtn">CSV出力</button>
+                <button class="tool-btn warn" id="clearOrdersBtn">注文クリア</button>
+            </div>
+            <div class="order-list" id="orderList">
+                <div class="empty-msg">注文がありません</div>
+            </div>
+        </div>
+
+        <div class="admin-panel">
+            <div class="panel-head">
+                <span class="panel-title">🧾 メニュー管理</span>
+                <span style="font-size:12px;color:#8B6B5A;">売切れの商品を即時非表示にできます</span>
+            </div>
+            <div class="menu-manager" id="menuManager"></div>
+        </div>
+    </div>
+
+    <!-- ===== 決済ポップアップ ===== -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <h2>🧾 注文確認</h2>
+            <div class="sub">内容をご確認の上、お支払い方法を選択してください</div>
+
+            <div class="order-summary" id="modalSummary"></div>
+            <div class="total-row">
+                <span>合計</span>
+                <span class="amount">¥ <span id="modalTotal">0</span></span>
+            </div>
+
+            <div class="checkout-fields">
+                <input id="tableInput" type="text" maxlength="12" placeholder="卓番 / お名前">
+                <input id="peopleInput" type="number" min="1" max="20" value="1" placeholder="人数">
+                <textarea id="noteInput" maxlength="120" placeholder="備考・アレルギー・辛さなど"></textarea>
+            </div>
+
+            <div class="pay-methods" id="payMethods">
+                <button data-method="paypay" class="selected">
+                    <span class="icon">📱</span>
+                    <span class="label">PayPay</span>
+                </button>
+                <button data-method="wechat">
+                    <span class="icon">💚</span>
+                    <span class="label">WeChat Pay</span>
+                </button>
+                <button data-method="alipay">
+                    <span class="icon">💙</span>
+                    <span class="label">Alipay</span>
+                </button>
+                <button data-method="iccard">
+                    <span class="icon">🆒</span>
+                    <span class="label">Suica / PASMO</span>
+                </button>
+                <button data-method="visa">
+                    <span class="icon">💳</span>
+                    <span class="label">Visa / Master</span>
+                </button>
+                <button data-method="cash">
+                    <span class="icon">💰</span>
+                    <span class="label">現金</span>
+                </button>
+            </div>
+
+            <div class="pay-detail" id="payDetail">
+                <span class="icon">📱</span>
+                <div class="info">
+                    <div class="label">PayPay</div>
+                    <div class="desc">QRコード決済 · キャッシュレス</div>
+                </div>
+            </div>
+
+            <div class="success-msg" id="paySuccess" style="display:none;">✅ 決済完了！ただいま調理中です 🍢</div>
+
+            <div class="actions">
+                <button class="btn-cancel" id="modalCancel">戻る</button>
+                <button class="btn-pay" id="modalPay">決済する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. データレイヤー
+        // ============================================================
+        const STORAGE_KEY = 'tokyo_orders';
+        const MENU_KEY = 'tokyo_menu';
+
+        const DEFAULT_MENU = [
+            // ---- 海鮮 ----
+            { id: 's1', name: '海鮮盛り合わせ', price: 3680, category: 'seafood', tag: '特選', on: true, unit: '品' },
+            { id: 's2', name: '海腸チャーハン', price: 880, category: 'seafood', tag: '人気', on: true, unit: '品' },
+            { id: 's3', name: 'サバ餃子', price: 300, category: 'seafood', tag: 'おすすめ', on: true, unit: '品' },
+            { id: 's4', name: '甘辛アサリ', price: 780, category: 'seafood', tag: '旨辛', on: true, unit: '品' },
+            { id: 's5', name: 'シャコ唐揚げ', price: 980, category: 'seafood', tag: '活造り', on: true, unit: '品' },
+            { id: 's6', name: '蒸しワタリガニ', price: 680, category: 'seafood', tag: '時価', on: true, unit: '杯' },
+            { id: 's7', name: 'ウニ茶碗蒸し', price: 420, category: 'seafood', tag: '6-8月', on: true, unit: '品' },
+            { id: 's8', name: '海鮮蒸し鍋', price: 1580, category: 'seafood', tag: '特製', on: true, unit: '品' },
+            { id: 's9', name: 'アワビ葱炒め', price: 1280, category: 'seafood', tag: '豪華', on: true, unit: '品' },
+            // ---- 串焼き ----
+            { id: 'b1', name: 'ホタルイカ串', price: 450, category: 'bbq', tag: '珍味', on: true, unit: '本' },
+            { id: 'b2', name: '焼き鳥貝', price: 300, category: 'bbq', tag: '地元', on: true, unit: '本' },
+            { id: 'b3', name: '焼き海老', price: 60, category: 'bbq', tag: '活き', on: true, unit: '本' },
+            { id: 'b4', name: 'ニンニク牡蠣', price: 140, category: 'bbq', tag: '定番', on: true, unit: '本' },
+            { id: 'b5', name: '焼きサンマ', price: 60, category: 'bbq', tag: '干物', on: true, unit: '本' },
+            { id: 'b6', name: '焼きカキ', price: 350, category: 'bbq', tag: '大粒', on: true, unit: '品' },
+            { id: 'b7', name: '焼きヒトデ', price: 220, category: 'bbq', tag: '珍味', on: true, unit: '品' },
+            { id: 'b8', name: '鳥貝油淋', price: 380, category: 'bbq', tag: '葱香', on: true, unit: '品' },
+            // ---- 肉類 ----
+            { id: 'm1', name: '豚バラ串', price: 200, category: 'meat', tag: '旨い', on: true, unit: '本' },
+            { id: 'm2', name: '赤身串', price: 180, category: 'meat', tag: '赤身', on: true, unit: '本' },
+            { id: 'm3', name: '手羽先', price: 80, category: 'meat', tag: '蜜汁', on: true, unit: '本' },
+            { id: 'm4', name: 'ハツ串', price: 280, category: 'meat', tag: '希少', on: true, unit: '品' },
+            { id: 'm5', name: 'ミノ串', price: 260, category: 'meat', tag: 'コリコリ', on: true, unit: '品' },
+            { id: 'm6', name: 'シロ串', price: 180, category: 'meat', tag: '定番', on: true, unit: '品' },
+            { id: 'm7', name: 'ラム串', price: 60, category: 'meat', tag: '', on: true, unit: '本' },
+            { id: 'm8', name: 'ウズラ', price: 80, category: 'meat', tag: '炭火', on: true, unit: '本' },
+            // ---- 主食 ----
+            { id: 'f1', name: '海鮮かき玉汁', price: 580, category: 'staple', tag: 'ほっこり', on: true, unit: '品' },
+            { id: 'f2', name: '焼きそば', price: 120, category: 'staple', tag: '主食', on: true, unit: '品' },
+            { id: 'f3', name: 'サバ水餃子', price: 360, category: 'staple', tag: '無形文化', on: true, unit: '品' },
+            { id: 'f4', name: 'アサリ辛炒め', price: 220, category: 'staple', tag: '酒の友', on: true, unit: '品' },
+            { id: 'f5', name: 'スパイス巻貝', price: 150, category: 'staple', tag: 'つまみ', on: true, unit: '品' },
+            { id: 'f6', name: '胡瓜和え', price: 160, category: 'staple', tag: 'さっぱり', on: true, unit: '品' },
+            { id: 'f7', name: 'ニンニクピータン', price: 220, category: 'staple', tag: '', on: true, unit: '品' },
+            { id: 'f8', name: '胡瓜味噌和え', price: 120, category: 'staple', tag: '', on: true, unit: '品' }
+        ];
+
+        function getOrders() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+        }
+
+        function saveOrders(orders) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        }
+
+        function getMenu() {
+            try {
+                const data = JSON.parse(localStorage.getItem(MENU_KEY));
+                if (data && data.length) return data;
+            } catch {}
+            return DEFAULT_MENU;
+        }
+
+        function saveMenu(menu) {
+            localStorage.setItem(MENU_KEY, JSON.stringify(menu));
+        }
+
+        if (!localStorage.getItem(MENU_KEY)) {
+            saveMenu(DEFAULT_MENU);
+        }
+
+        // ============================================================
+        // 2. ステータス
+        // ============================================================
+        let cart = {};
+        let currentCategory = 'all';
+        let selectedPayment = 'paypay';
+        let cashAmount = 0;
+        let currentMode = 'front';
+        let statusFilter = 'all';
+        let orderSearch = '';
+
+        function escapeHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[ch]));
+        }
+
+        // ============================================================
+        // 3. フロント - メニュー表示
+        // ============================================================
+        function renderFrontMenu(category) {
+            category = category || 'all';
+            const menu = getMenu();
+            let filtered = menu.filter(m => m.on);
+            if (category !== 'all') {
+                filtered = filtered.filter(m => m.category === category);
+            }
+
+            const grid = document.getElementById('menuGrid');
+            if (!filtered.length) {
+                grid.innerHTML = `<div class="empty-msg">ただいまメニュー準備中です</div>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(item => {
+                const qty = cart[item.id]?.quantity || 0;
+                html += `
+                    <div class="menu-item" data-id="${item.id}">
+                        <div class="info">
+                            <div class="name">${escapeHTML(item.name)} ${item.tag ? `<span class="tag">${escapeHTML(item.tag)}</span>` : ''}</div>
+                            <div class="desc">
+                                <span class="price">¥${item.price}</span>
+                                <span>/${escapeHTML(item.unit || '品')}</span>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            ${qty > 0 ? `<button class="minus-btn" data-id="${item.id}">−</button>` : ''}
+                            <span class="qty">${qty > 0 ? qty : ''}</span>
+                            <button class="add-btn" data-id="${item.id}">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+
+            grid.querySelectorAll('.add-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    addToCart(this.dataset.id);
+                });
+            });
+            grid.querySelectorAll('.minus-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    removeFromCart(this.dataset.id);
+                });
+            });
+        }
+
+        // ============================================================
+        // 4. カート操作
+        // ============================================================
+        function addToCart(id) {
+            const menu = getMenu();
+            const item = menu.find(m => m.id === id);
+            if (!item || !item.on) return;
+            if (cart[id]) cart[id].quantity += 1;
+            else cart[id] = { ...item, quantity: 1 };
+            updateCartUI();
+            renderFrontMenu(currentCategory);
+        }
+
+        function removeFromCart(id) {
+            if (!cart[id]) return;
+            cart[id].quantity -= 1;
+            if (cart[id].quantity <= 0) delete cart[id];
+            updateCartUI();
+            renderFrontMenu(currentCategory);
+        }
+
+        function getCartItems() { return Object.values(cart); }
+
+        function getCartTotal() {
+            return getCartItems().reduce((acc, i) => acc + i.price * i.quantity, 0);
+        }
+
+        function getCartCount() {
+            return getCartItems().reduce((acc, i) => acc + i.quantity, 0);
+        }
+
+        function updateCartUI() {
+            const count = getCartCount();
+            const total = getCartTotal();
+            document.getElementById('cartBadge').textContent = count;
+            document.getElementById('cartTotal').textContent = total;
+            const btn = document.getElementById('checkoutBtn');
+            btn.disabled = count === 0;
+            btn.textContent = count === 0 ? '🛒 カートが空' : `注文する ➜ (${count}品)`;
+        }
+
+        // ============================================================
+        // 5. カテゴリー切替
+        // ============================================================
+        document.getElementById('categoryNav').addEventListener('click', function(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const cat = btn.dataset.cat;
+            if (!cat) return;
+            this.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCategory = cat;
+            renderFrontMenu(cat);
+        });
+
+        // ============================================================
+        // 6. 決済ポップアップ
+        // ============================================================
+        const paymentConfig = {
+            paypay: { icon: '📱', label: 'PayPay', desc: 'QRコード決済 · キャッシュレス' },
+            wechat: { icon: '💚', label: 'WeChat Pay', desc: 'コード決済 · 安心・簡単' },
+            alipay: { icon: '💙', label: 'Alipay', desc: 'コード決済 · フレンドリー' },
+            iccard: { icon: '🆒', label: 'Suica / PASMO', desc: '交通系IC · タッチ決済' },
+            visa: { icon: '💳', label: 'Visa / Master', desc: 'クレジットカード · 安全' },
+            cash: { icon: '💰', label: '現金', desc: '店頭決済 · おつり対応' },
+        };
+
+        function openPaymentModal() {
+            const items = getCartItems();
+            if (!items.length) return;
+
+            let html = '';
+            items.forEach(item => {
+                html += `
+                    <div class="line">
+                        <span>${escapeHTML(item.name)} ×${item.quantity}</span>
+                        <span>¥${(item.price * item.quantity).toFixed(0)}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('modalSummary').innerHTML = html;
+            document.getElementById('modalTotal').textContent = getCartTotal();
+
+            selectedPayment = 'paypay';
+            cashAmount = 0;
+            document.querySelectorAll('#payMethods button').forEach(b => b.classList.remove('selected'));
+            document.querySelector('#payMethods button[data-method="paypay"]').classList.add('selected');
+            updatePayDetail('paypay');
+
+            document.getElementById('paySuccess').style.display = 'none';
+            document.getElementById('modalPay').disabled = false;
+            document.getElementById('modalPay').textContent = '決済する';
+
+            document.getElementById('paymentModal').classList.add('show');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('show');
+        }
+
+        function updatePayDetail(method) {
+            const config = paymentConfig[method];
+            if (!config) return;
+            const container = document.getElementById('payDetail');
+
+            let html = `<span class="icon">${config.icon}</span>
+                        <div class="info">
+                            <div class="label">${config.label}</div>
+                            <div class="desc">${config.desc}</div>`;
+
+            if (method === 'cash') {
+                const total = getCartTotal();
+                html += `
+                    <div class="cash-input">
+                        <span>受取額 ¥</span>
+                        <input type="number" id="cashInput" value="${Math.ceil(total / 100) * 100}" min="${total}" step="100" />
+                        <span class="change" id="changeDisplay">おつり ¥0</span>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+
+            if (method === 'cash') {
+                const input = document.getElementById('cashInput');
+                const changeDisplay = document.getElementById('changeDisplay');
+                if (input) {
+                    input.addEventListener('input', function() {
+                        const val = parseFloat(this.value) || 0;
+                        const total = getCartTotal();
+                        const change = val - total;
+                        changeDisplay.textContent = change >= 0 ? `おつり ¥${change.toFixed(0)}` : '⚠️ 金額不足';
+                        cashAmount = val;
+                    });
+                    input.dispatchEvent(new Event('input'));
+                }
+            }
+        }
+
+        document.getElementById('payMethods').addEventListener('click', function(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const method = btn.dataset.method;
+            if (!method) return;
+            this.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedPayment = method;
+            updatePayDetail(method);
+        });
+
+        function confirmPayment() {
+            const items = getCartItems();
+            if (!items.length) return;
+
+            if (selectedPayment === 'cash') {
+                const total = getCartTotal();
+                const input = document.getElementById('cashInput');
+                const received = parseFloat(input?.value) || 0;
+                if (received < total) {
+                    alert('⚠️ 受取額が不足しています');
+                    return;
+                }
+            }
+
+            const orders = getOrders();
+            const tableName = document.getElementById('tableInput').value.trim() || '未指定';
+            const peopleCount = Math.max(1, parseInt(document.getElementById('peopleInput').value, 10) || 1);
+            const note = document.getElementById('noteInput').value.trim();
+            const newOrder = {
+                id: 'ORD' + String(Date.now()).slice(-8),
+                items: items.map(i => ({ name: i.name, price: i.price, quantity: i.quantity })),
+                total: getCartTotal(),
+                payment: selectedPayment,
+                table: tableName,
+                people: peopleCount,
+                note: note,
+                status: 'new',
+                timestamp: Date.now()
+            };
+            orders.push(newOrder);
+            saveOrders(orders);
+
+            cart = {};
+            updateCartUI();
+            renderFrontMenu(currentCategory);
+
+            document.getElementById('paySuccess').style.display = 'block';
+            document.getElementById('modalPay').disabled = true;
+            document.getElementById('modalPay').textContent = '✅ 決済完了';
+            document.getElementById('noteInput').value = '';
+
+            renderAdmin();
+            playNotificationSound();
+
+            setTimeout(() => {
+                closePaymentModal();
+                document.getElementById('paySuccess').style.display = 'none';
+                document.getElementById('modalPay').disabled = false;
+                document.getElementById('modalPay').textContent = '決済する';
+            }, 1500);
+        }
+
+        function playNotificationSound() {
+            try {
+                const ctx = new(window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 800;
+                gain.gain.value = 0.12;
+                osc.start();
+                setTimeout(() => { osc.stop(); }, 120);
+                setTimeout(() => {
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.frequency.value = 1000;
+                    gain2.gain.value = 0.12;
+                    osc2.start();
+                    setTimeout(() => { osc2.stop(); }, 120);
+                }, 160);
+            } catch (e) {}
+        }
+
+        document.getElementById('checkoutBtn').addEventListener('click', openPaymentModal);
+        document.getElementById('modalCancel').addEventListener('click', closePaymentModal);
+        document.getElementById('modalPay').addEventListener('click', confirmPayment);
+        document.getElementById('paymentModal').addEventListener('click', function(e) {
+            if (e.target === this) closePaymentModal();
+        });
+
+        // ============================================================
+        // 7. 管理 - 注文表示
+        // ============================================================
+        function renderAdmin() {
+            const orders = getOrders();
+            const list = document.getElementById('orderList');
+
+            if (!orders.length) {
+                list.innerHTML = `<div class="empty-msg">注文がありません</div>`;
+                updateAdminStats(orders);
+                return;
+            }
+
+            let sorted = [...orders].sort((a, b) => b.timestamp - a.timestamp);
+            if (statusFilter !== 'all') {
+                sorted = sorted.filter(order => (order.status || 'new') === statusFilter);
+            }
+            if (orderSearch) {
+                const keyword = orderSearch.toLowerCase();
+                sorted = sorted.filter(order => {
+                    const itemText = order.items.map(item => item.name).join(' ').toLowerCase();
+                    return String(order.id).toLowerCase().includes(keyword) ||
+                        String(order.table || '').toLowerCase().includes(keyword) ||
+                        itemText.includes(keyword);
+                });
+            }
+            let newCount = 0;
+            let html = '';
+
+            orders.forEach(order => {
+                const isNew = order.status === 'new';
+                if (isNew) newCount++;
+            });
+
+            if (!sorted.length) {
+                list.innerHTML = `<div class="empty-msg">条件に合う注文がありません</div>`;
+                document.getElementById('newBadge').textContent = `${newCount} 件新規`;
+                updateAdminStats(orders);
+                renderTopDish(orders);
+                return;
+            }
+
+            sorted.forEach(order => {
+                const isNew = order.status === 'new';
+
+                const statusMap = {
+                    'new': '🆕 新規',
+                    'cooking': '👨‍🍳 調理中',
+                    'done': '✅ 完了',
+                    'paid': '💰 決済済'
+                };
+                const statusClass = order.status || 'new';
+                const payIcons = { paypay: '📱', wechat: '💚', alipay: '💙', iccard: '🆒', visa: '💳', cash: '💰' };
+
+                const itemsHtml = order.items.map(item =>
+                    `<span class="item-tag">${escapeHTML(item.name)}×${item.quantity}</span>`
+                ).join('');
+
+                html += `
+                    <div class="order-card ${isNew ? 'new-order' : ''}">
+                        <div class="row">
+                            <span class="id">#${escapeHTML(order.id)}</span>
+                            <span class="time">${new Date(order.timestamp).toLocaleString('ja-JP')}</span>
+                            <span class="status-badge ${statusClass}">${statusMap[statusClass]}</span>
+                        </div>
+                        <div class="meta-line">
+                            <span>卓番: ${escapeHTML(order.table || '未指定')}</span>
+                            <span>人数: ${escapeHTML(order.people || 1)}名</span>
+                            ${order.note ? `<span>備考: ${escapeHTML(order.note)}</span>` : ''}
+                        </div>
+                        <div class="items-line">${itemsHtml}</div>
+                        <div class="footer">
+                            <span class="payment">${payIcons[order.payment] || '💳'} ${order.payment || '不明'}</span>
+                            <span class="total">¥${order.total.toFixed(0)}</span>
+                            <div class="actions">
+                                ${order.status === 'new' ? `<button class="btn-cooking" data-id="${order.id}" data-action="cooking">👨‍🍳 調理</button>` : ''}
+                                ${order.status === 'cooking' ? `<button class="btn-done" data-id="${order.id}" data-action="done">✅ 完了</button>` : ''}
+                                ${order.status === 'done' ? `<button class="btn-paid" data-id="${order.id}" data-action="paid">💰 決済</button>` : ''}
+                                ${order.status !== 'paid' && order.status !== 'new' ? `<button class="btn-cancel" data-id="${order.id}" data-action="cancel">✖ 取消</button>` : ''}
+                                ${order.status === 'paid' ? `<span style="font-size:12px;color:#27AE60;font-weight:600;">✓ 完了</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            list.innerHTML = html;
+            document.getElementById('newBadge').textContent = `${newCount} 件新規`;
+
+            list.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    const action = this.dataset.action;
+                    updateOrderStatus(id, action);
+                });
+            });
+
+            updateAdminStats(orders);
+            renderTopDish(orders);
+        }
+
+        // ============================================================
+        // 8. 管理 - ステータス更新
+        // ============================================================
+        function updateOrderStatus(orderId, action) {
+            let orders = getOrders();
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const statusMap = {
+                'cooking': 'cooking',
+                'done': 'done',
+                'paid': 'paid',
+                'cancel': 'paid'
+            };
+            order.status = statusMap[action] || order.status;
+
+            saveOrders(orders);
+            renderAdmin();
+        }
+
+        // ============================================================
+        // 9. 管理 - 統計
+        // ============================================================
+        function updateAdminStats(orders) {
+            document.getElementById('statOrders').textContent = orders.length;
+
+            const today = new Date().toDateString();
+            const todayOrders = orders.filter(o => {
+                const d = new Date(o.timestamp);
+                return d.toDateString() === today && (o.status === 'paid' || o.status === 'done');
+            });
+            const revenue = todayOrders.reduce((s, o) => s + o.total, 0);
+            document.getElementById('statRevenue').textContent = `¥${revenue.toFixed(0)}`;
+
+            const pending = orders.filter(o => o.status === 'new' || o.status === 'cooking').length;
+            document.getElementById('statPending').textContent = pending;
+        }
+
+        function renderTopDish(orders) {
+            const completed = orders.filter(o => o.status === 'paid' || o.status === 'done');
+            const count = {};
+            completed.forEach(o => {
+                o.items.forEach(item => {
+                    count[item.name] = (count[item.name] || 0) + item.quantity;
+                });
+            });
+            const sorted = Object.entries(count).sort((a, b) => b[1] - a[1]);
+            document.getElementById('statTopDish').textContent = sorted.length ? sorted[0][0] : '-';
+        }
+
+        function renderMenuManager() {
+            const menu = getMenu();
+            const manager = document.getElementById('menuManager');
+            manager.innerHTML = menu.map(item => `
+                <label class="menu-toggle" title="${escapeHTML(item.name)}">
+                    <span>${escapeHTML(item.name)} · ¥${item.price}</span>
+                    <input type="checkbox" data-menu-id="${escapeHTML(item.id)}" ${item.on ? 'checked' : ''}>
+                </label>
+            `).join('');
+
+            manager.querySelectorAll('[data-menu-id]').forEach(input => {
+                input.addEventListener('change', function() {
+                    const nextMenu = getMenu().map(item => (
+                        item.id === this.dataset.menuId ? { ...item, on: this.checked } : item
+                    ));
+                    saveMenu(nextMenu);
+                    renderFrontMenu(currentCategory);
+                    renderMenuManager();
+                });
+            });
+        }
+
+        function exportOrdersCSV() {
+            const orders = getOrders();
+            if (!orders.length) {
+                alert('出力できる注文がありません');
+                return;
+            }
+            const rows = [['注文番号', '日時', '状態', '卓番', '人数', '商品', '支払い', '合計', '備考']];
+            orders.forEach(order => {
+                rows.push([
+                    order.id,
+                    new Date(order.timestamp).toLocaleString('ja-JP'),
+                    order.status || 'new',
+                    order.table || '',
+                    order.people || 1,
+                    order.items.map(item => `${item.name}x${item.quantity}`).join(' / '),
+                    order.payment || '',
+                    order.total,
+                    order.note || ''
+                ]);
+            });
+            const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `tokyo-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearOrders() {
+            if (!confirm('すべての注文履歴を削除しますか？')) return;
+            saveOrders([]);
+            renderAdmin();
+        }
+
+        // ============================================================
+        // 10. モード切替
+        // ============================================================
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(mode === 'front' ? 'frontPage' : 'adminPage').classList.add('active');
+
+            document.querySelectorAll('#modeTabs button').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === mode);
+            });
+
+            document.getElementById('roleLabel').textContent = mode === 'front' ? 'お客様' : '店長';
+
+            if (mode === 'admin') {
+                renderAdmin();
+                renderMenuManager();
+            }
+            if (mode === 'front') {
+                renderFrontMenu(currentCategory);
+                updateCartUI();
+            }
+        }
+
+        document.getElementById('modeTabs').addEventListener('click', function(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const mode = btn.dataset.mode;
+            if (mode && mode !== currentMode) {
+                switchMode(mode);
+            }
+        });
+
+        document.getElementById('switchRoleBtn').addEventListener('click', function() {
+            const next = currentMode === 'front' ? 'admin' : 'front';
+            switchMode(next);
+            document.querySelectorAll('#modeTabs button').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === next);
+            });
+        });
+
+        document.getElementById('statusFilter').addEventListener('change', function() {
+            statusFilter = this.value;
+            renderAdmin();
+        });
+
+        document.getElementById('orderSearch').addEventListener('input', function() {
+            orderSearch = this.value.trim();
+            renderAdmin();
+        });
+
+        document.getElementById('simulateBtn').addEventListener('click', function() {
+            window.simulateOrder();
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', exportOrdersCSV);
+        document.getElementById('clearOrdersBtn').addEventListener('click', clearOrders);
+
+        // ============================================================
+        // 11. タブ間同期
+        // ============================================================
+        window.addEventListener('storage', function(e) {
+            if (e.key === STORAGE_KEY) {
+                if (currentMode === 'admin') renderAdmin();
+            }
+            if (e.key === MENU_KEY) {
+                if (currentMode === 'front') renderFrontMenu(currentCategory);
+            }
+        });
+
+        // ============================================================
+        // 12. 自動テスト注文
+        // ============================================================
+        window.simulateOrder = function() {
+            const menu = getMenu().filter(m => m.on);
+            if (!menu.length) return;
+
+            const items = [];
+            const count = Math.floor(Math.random() * 3) + 1;
+            const shuffled = [...menu].sort(() => Math.random() - 0.5);
+            for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+                const item = shuffled[i];
+                items.push({
+                    name: item.name,
+                    price: item.price,
+                    quantity: Math.floor(Math.random() * 3) + 1
+                });
+            }
+            const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+            const payments = ['paypay', 'wechat', 'alipay', 'iccard', 'visa', 'cash'];
+            const payment = payments[Math.floor(Math.random() * payments.length)];
+
+            const orders = getOrders();
+            orders.push({
+                id: 'ORD' + String(Date.now()).slice(-8),
+                items: items,
+                total: total,
+                payment: payment,
+                table: `T-${Math.floor(Math.random() * 18) + 1}`,
+                people: Math.floor(Math.random() * 4) + 1,
+                note: Math.random() < 0.35 ? '辛さ控えめ' : '',
+                status: 'new',
+                timestamp: Date.now()
+            });
+            saveOrders(orders);
+            if (currentMode === 'admin') renderAdmin();
+            playNotificationSound();
+        };
+
+        // ============================================================
+        // 13. 初期化
+        // ============================================================
+        if (!localStorage.getItem(MENU_KEY)) {
+            saveMenu(DEFAULT_MENU);
+        }
+        switchMode('front');
+
+        console.log('🏮 東京海鮮焼きシステムが起動しました！');
+        console.log('💡 右上の「切替」でお客様/店長モードを切り替えられます');
+        console.log('💡 コンソールで simulateOrder() を実行するとテスト注文が入ります');
+        console.log('📋 現在のメニュー数:', getMenu().length);
+    </script>
+</body>
+</html>
