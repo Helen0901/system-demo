@@ -344,6 +344,79 @@
             transform: scale(0.94);
         }
 
+        .history-panel {
+            background:white;
+            border:1px solid #F0E0D4;
+            border-radius:14px;
+            padding:12px 14px;
+            margin:10px 0 96px;
+            box-shadow:0 2px 8px rgba(139, 26, 26, 0.06);
+            display:none;
+        }
+        .history-panel.show {
+            display:block;
+        }
+        .history-head {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            margin-bottom:8px;
+        }
+        .history-head strong {
+            color:#2C1810;
+            font-size:15px;
+        }
+        .history-head button,
+        .history-toggle {
+            border:none;
+            background:#F5EDE6;
+            color:#5A3F32;
+            font-size:12px;
+            font-weight:700;
+            border-radius:999px;
+            padding:7px 12px;
+            cursor:pointer;
+        }
+        .history-list {
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        }
+        .history-item {
+            background:#FFF8F0;
+            border:1px solid #F0E0D4;
+            border-radius:12px;
+            padding:10px 12px;
+        }
+        .history-item .top {
+            display:flex;
+            justify-content:space-between;
+            gap:8px;
+            font-size:12px;
+            color:#8B6B5A;
+            flex-wrap:wrap;
+        }
+        .history-item .status {
+            font-weight:700;
+            color:#C0392B;
+        }
+        .history-item .items {
+            color:#5A3F32;
+            font-size:13px;
+            margin-top:4px;
+        }
+        .history-item .total {
+            color:#D35400;
+            font-weight:700;
+            margin-top:4px;
+            font-size:14px;
+        }
+        .cart-bar .history-toggle {
+            margin-left:4px;
+            white-space:nowrap;
+        }
+
         .admin-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -939,6 +1012,13 @@
             <button data-cat="staple">🥟 主食</button>
         </div>
         <div class="menu-grid" id="menuGrid"></div>
+        <div class="history-panel" id="historyPanel">
+            <div class="history-head">
+                <strong>🧾 注文履歴</strong>
+                <button id="historyCloseBtn">閉じる</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+        </div>
         <div class="cart-bar" id="cartBar">
             <div class="left">
                 <div class="icon">
@@ -946,6 +1026,7 @@
                     <span class="badge" id="cartBadge">0</span>
                 </div>
                 <div class="total">¥ <span id="cartTotal">0</span></div>
+                <button class="history-toggle" id="historyToggleBtn">履歴</button>
             </div>
             <button class="checkout-btn" id="checkoutBtn">注文する ➜</button>
         </div>
@@ -1090,6 +1171,7 @@
         // ============================================================
         const STORAGE_KEY = 'tokyo_orders';
         const MENU_KEY = 'tokyo_menu';
+        const MY_ORDER_IDS_KEY = 'tokyo_my_order_ids';
         const RESTAURANT_ID = 'tokyo-seafood-main';
 
         // Firebase Realtime Database config.
@@ -1246,6 +1328,7 @@
                     const orders = Array.isArray(data) ? data : Object.values(data);
                     cacheOrders(orders.filter(Boolean));
                     if (currentMode === 'admin') renderAdmin();
+                    renderOrderHistory();
                 });
 
                 dbModule.onValue(menuRef, async snapshot => {
@@ -1286,6 +1369,7 @@
         const ADMIN_PIN = '0901';
         let adminUnlocked = sessionStorage.getItem('adminUnlocked') === 'yes';
         let staffName = sessionStorage.getItem('staffName') || '';
+        let historyVisible = false;
 
         function escapeHTML(value) {
             return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -1351,6 +1435,15 @@
         function customerUrlForTable(tableNo) {
             const base = `${window.location.origin}${window.location.pathname}`;
             return `${base}?table=${encodeURIComponent(tableNo)}`;
+        }
+
+        function getMyOrderIds() {
+            try { return JSON.parse(localStorage.getItem(MY_ORDER_IDS_KEY)) || []; } catch { return []; }
+        }
+
+        function rememberMyOrder(orderId) {
+            const ids = [orderId, ...getMyOrderIds().filter(id => id !== orderId)].slice(0, 30);
+            localStorage.setItem(MY_ORDER_IDS_KEY, JSON.stringify(ids));
         }
 
         // ============================================================
@@ -1446,6 +1539,41 @@
             const btn = document.getElementById('checkoutBtn');
             btn.disabled = count === 0;
             btn.textContent = count === 0 ? '🛒 カートが空' : `注文する ➜ (${count}品)`;
+        }
+
+        function renderOrderHistory() {
+            const panel = document.getElementById('historyPanel');
+            const list = document.getElementById('historyList');
+            if (!panel || !list) return;
+            panel.classList.toggle('show', historyVisible);
+
+            const ids = getMyOrderIds();
+            const myOrders = getOrders()
+                .filter(order => ids.includes(order.id))
+                .sort((a, b) => b.timestamp - a.timestamp);
+
+            if (!myOrders.length) {
+                list.innerHTML = `<div class="empty-msg" style="padding:18px 0;">この端末の注文履歴はまだありません</div>`;
+                return;
+            }
+
+            const statusMap = {
+                new: '受付済み',
+                cooking: '調理中',
+                done: '受取できます',
+                paid: '完了'
+            };
+
+            list.innerHTML = myOrders.map(order => `
+                <div class="history-item">
+                    <div class="top">
+                        <span>#${escapeHTML(order.id)} · ${new Date(order.timestamp).toLocaleString('ja-JP')}</span>
+                        <span class="status">${statusMap[order.status || 'new'] || '受付済み'}</span>
+                    </div>
+                    <div class="items">${order.items.map(item => `${escapeHTML(item.name)}×${item.quantity}`).join('、')}</div>
+                    <div class="total">¥${order.total.toFixed(0)} · 卓番 ${escapeHTML(order.table || '未指定')}</div>
+                </div>
+            `).join('');
         }
 
         // ============================================================
@@ -1595,6 +1723,7 @@
 
             try {
                 await createOrder(newOrder);
+                rememberMyOrder(newOrder.id);
             } catch (error) {
                 console.error(error);
                 alert('注文の送信に失敗しました。通信状態をご確認ください。');
@@ -1606,6 +1735,7 @@
             cart = {};
             updateCartUI();
             renderFrontMenu(currentCategory);
+            renderOrderHistory();
 
             document.getElementById('paySuccess').style.display = 'block';
             payBtn.disabled = true;
@@ -1650,6 +1780,14 @@
         document.getElementById('checkoutBtn').addEventListener('click', openPaymentModal);
         document.getElementById('modalCancel').addEventListener('click', closePaymentModal);
         document.getElementById('modalPay').addEventListener('click', confirmPayment);
+        document.getElementById('historyToggleBtn').addEventListener('click', function() {
+            historyVisible = !historyVisible;
+            renderOrderHistory();
+        });
+        document.getElementById('historyCloseBtn').addEventListener('click', function() {
+            historyVisible = false;
+            renderOrderHistory();
+        });
         document.getElementById('paymentModal').addEventListener('click', function(e) {
             if (e.target === this) closePaymentModal();
         });
@@ -1990,6 +2128,7 @@
             if (mode === 'front') {
                 renderFrontMenu(currentCategory);
                 updateCartUI();
+                renderOrderHistory();
             }
         }
 
@@ -2039,6 +2178,7 @@
         window.addEventListener('storage', function(e) {
             if (e.key === STORAGE_KEY) {
                 if (currentMode === 'admin') renderAdmin();
+                renderOrderHistory();
             }
             if (e.key === MENU_KEY) {
                 if (currentMode === 'front') renderFrontMenu(currentCategory);
