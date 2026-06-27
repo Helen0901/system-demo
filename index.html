@@ -66,6 +66,10 @@
             text-decoration: underline;
             font-weight: 600;
         }
+        body.guest-mode .role-badge,
+        body.guest-mode .mode-tabs {
+            display: none;
+        }
 
         .mode-tabs {
             display: flex;
@@ -850,7 +854,7 @@
         }
     </style>
 </head>
-<body>
+<body class="guest-mode">
 
     <header class="app-header">
         <div class="brand">
@@ -1207,6 +1211,8 @@
         let currentMode = 'front';
         let statusFilter = 'all';
         let orderSearch = '';
+        const ADMIN_PIN = '0901';
+        let adminUnlocked = sessionStorage.getItem('adminUnlocked') === 'yes';
 
         function escapeHTML(value) {
             return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -1216,6 +1222,26 @@
                 '"': '&quot;',
                 "'": '&#39;'
             }[ch]));
+        }
+
+        function applyAccessMode() {
+            document.body.classList.toggle('guest-mode', !adminUnlocked);
+            if (!adminUnlocked && currentMode === 'admin') {
+                switchMode('front');
+            }
+        }
+
+        function requestAdminAccess() {
+            const input = prompt('管理者パスワードを入力してください');
+            if (input === ADMIN_PIN) {
+                adminUnlocked = true;
+                sessionStorage.setItem('adminUnlocked', 'yes');
+                applyAccessMode();
+                switchMode('admin');
+                return true;
+            }
+            alert('パスワードが違います');
+            return false;
         }
 
         // ============================================================
@@ -1742,6 +1768,11 @@
         // 10. モード切替
         // ============================================================
         function switchMode(mode) {
+            if (mode === 'admin' && !adminUnlocked) {
+                requestAdminAccess();
+                return;
+            }
+
             currentMode = mode;
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(mode === 'front' ? 'frontPage' : 'adminPage').classList.add('active');
@@ -1772,6 +1803,10 @@
         });
 
         document.getElementById('switchRoleBtn').addEventListener('click', function() {
+            if (!adminUnlocked) {
+                requestAdminAccess();
+                return;
+            }
             const next = currentMode === 'front' ? 'admin' : 'front';
             switchMode(next);
             document.querySelectorAll('#modeTabs button').forEach(b => {
@@ -1851,7 +1886,12 @@
         if (!localStorage.getItem(MENU_KEY)) {
             cacheMenu(DEFAULT_MENU);
         }
+        applyAccessMode();
         switchMode('front');
+        if (new URLSearchParams(window.location.search).get('admin') === '1') {
+            if (adminUnlocked) switchMode('admin');
+            else requestAdminAccess();
+        }
         initCloudSync();
 
         console.log('🏮 東京海鮮焼きシステムが起動しました！');
